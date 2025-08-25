@@ -1,0 +1,73 @@
+graph TD
+    START([Start Test]) --> INIT[Initialize ChromeAutomation]
+    INIT --> CHROME{Setup ChromeDriver?}
+    CHROME -->|No| ERROR1[❌ Chrome Setup Failed]
+    CHROME -->|Yes| SESSION{Check Session}
+    
+    SESSION -->|Valid Session & Credits > 20| FLOW[Navigate to Flow]
+    SESSION -->|No Session| LOGIN_FLOW[Login Flow]
+    SESSION -->|Valid Session & Credits ≤ 20| SWITCH_ACCOUNT[Switch to New Account]
+    
+    LOGIN_FLOW --> GOOGLE[Navigate to Google Login]
+    GOOGLE --> EMAIL[Enter Email]
+    EMAIL --> PASS[Enter Password]
+    PASS --> TWOFA[Handle 2FA if Required]
+    TWOFA --> VERIFY[Verify Login Success]
+    VERIFY -->|Failed| ERROR2[❌ Login Failed]
+    VERIFY -->|Success| CHECK_CREDITS[Check AI Credits]
+    
+    CHECK_CREDITS -->|Credits ≤ 20| SWITCH_ACCOUNT
+    CHECK_CREDITS -->|Credits > 20| SAVE_SESSION[Save Session & Credits]
+    
+    SWITCH_ACCOUNT --> LOGOUT[Logout Current Account]
+    LOGOUT --> CLEAR_CACHE[Clear Browser Cache/Cookies]
+    CLEAR_CACHE --> LOGIN_FLOW
+    
+    SAVE_SESSION --> FLOW
+    
+    FLOW --> FIRST_TIME{First Time Flow Access?}
+    FIRST_TIME -->|Yes| ONBOARDING[Handle Onboarding Steps]
+    FIRST_TIME -->|No| PROJECT[Create New Project]
+    
+    ONBOARDING --> WELCOME[Skip Welcome Screen]
+    WELCOME --> TUTORIAL[Skip Tutorial/Guide]
+    TUTORIAL --> PERMISSIONS[Handle Permissions]
+    PERMISSIONS --> SETUP_COMPLETE[Complete Initial Setup]
+    SETUP_COMPLETE --> PROJECT
+    
+    PROJECT --> DEDUCT[Deduct Credits from Session]
+    DEDUCT --> FORM[Fill Project Form with Prompt]
+    FORM --> URL[Capture Project URL]
+    URL --> CACHE[Save to User Cache]
+    CACHE --> VIDEO_CHECK[Check Ready Videos]
+    
+    VIDEO_CHECK --> PENDING{Has Pending Projects?}
+    PENDING -->|No| SUCCESS[✅ Test Complete]
+    PENDING -->|Yes| DOWNLOAD[Download Videos]
+    
+    DOWNLOAD --> QUALITY[Select 720p Quality]
+    QUALITY --> CONFIRM[Confirm Download]
+    CONFIRM --> TRANSFER[Transfer to PC/Server]
+    TRANSFER --> SUCCESS
+    
+    ERROR1 --> END([End])
+    ERROR2 --> END
+    SUCCESS --> END
+    
+    style START fill:#4CAF50,color:#ffffff
+    style SUCCESS fill:#4CAF50,color:#ffffff
+    style ERROR1 fill:#F44336,color:#ffffff
+    style ERROR2 fill:#F44336,color:#ffffff
+    style CHECK_CREDITS fill:#FF9800,color:#ffffff
+    style SWITCH_ACCOUNT fill:#FF9800,color:#ffffff
+    style SAVE_SESSION fill:#2E7D32,color:#ffffff
+    style FIRST_TIME fill:#9C27B0,color:#ffffff
+    style ONBOARDING fill:#FFC107,color:#000000
+    style WELCOME fill:#FFC107,color:#000000
+    style TUTORIAL fill:#FFC107,color:#000000
+    style PERMISSIONS fill:#FFC107,color:#000000
+    style SETUP_COMPLETE fill:#2E7D32,color:#ffffff
+    style END fill:#2196F3,color:#ffffff
+    style CHROME fill:#00BCD4,color:#ffffff
+    style CLEAR_CACHE fill:#E91E63,color:#ffffff
+    style TWOFA fill:#FF5722,color:#ffffff
