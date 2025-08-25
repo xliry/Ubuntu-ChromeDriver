@@ -8,7 +8,7 @@ import argparse
 import sys
 import asyncio
 import time
-from datetime import datetime
+from datetime import datetime, timedelta
 import uuid
 from pathlib import Path
 
@@ -46,34 +46,56 @@ app.add_middleware(
 jobs = {}
 active_sessions = {}
 
-# Pydantic models
-class GoogleFlowRequest(BaseModel):
-    jobId: str
+# Pydantic models - Android Agent Ubuntu Migration Guide uyumlu
+class CreateProjectRequest(BaseModel):
     prompt: str
     model: str = "veo-3"
-    timestamp: Optional[str] = None
-    userId: Optional[str] = None
-    action: str = "create_project"
-    timeout: int = 300
-    callbackUrl: Optional[str] = "https://balder-ai.vercel.app/api/jobs/callback"  # Default production callback
+    user_id: str
+    callback_url: Optional[str] = "https://balder-ai.vercel.app/api/jobs/callback"
 
 class JobResponse(BaseModel):
     success: bool
+    job_id: str
+    project_url: Optional[str] = None
+    project_id: Optional[str] = None
+    user_id: str
+    status: str
     message: str
-    data: Dict[str, Any]
+    total_videos: int = 0
+    is_new_project: bool = True
 
 class JobStatus(BaseModel):
-    jobId: str
+    job_id: str
     status: str
-    progress: int
-    currentStep: str
-    estimatedTimeRemaining: str
-    sessionInfo: Dict[str, Any]
+    project_url: Optional[str] = None
+    video_url: Optional[str] = None
+    created_at: str
+    completed_at: Optional[str] = None
+
+class UserStats(BaseModel):
+    status: str
+    user_id: str
+    data: Dict[str, Any]
+    timestamp: str
+
+class AllUsersStats(BaseModel):
+    status: str
+    data: Dict[str, Any]
+    timestamp: str
+
+class CleanupRequest(BaseModel):
+    days_threshold: int = 30
+
+class CleanupResponse(BaseModel):
+    status: str
+    message: str
+    days_threshold: int
+    timestamp: str
 
 class HealthStatus(BaseModel):
     status: str
     timestamp: str
-    components: Dict[str, Any]
+    version: str = "1.0.0"
 
 class RestartResponse(BaseModel):
     success: bool
@@ -191,44 +213,43 @@ async def root():
 
 @app.get("/health")
 async def health_check():
-    """Health check endpoint"""
+    """Health check endpoint - Android Agent Ubuntu Migration Guide uyumlu"""
     return HealthStatus(
         status="healthy",
         timestamp=datetime.now().isoformat(),
-        components={
-            "api": "running",
-            "chrome": "available",
-            "session_manager": "available"
-        }
+        version="1.0.0"
     )
 
-@app.post("/api/google-flow", response_model=JobResponse)
-async def google_flow_endpoint(request: GoogleFlowRequest, background_tasks: BackgroundTasks):
-    """Google Flow video generation endpoint - Production BalderAI entegrasyonu"""
+@app.post("/api/v1/create-project", response_model=JobResponse)
+async def create_project_endpoint(request: CreateProjectRequest, background_tasks: BackgroundTasks):
+    """Create video project endpoint - Android Agent Ubuntu Migration Guide uyumlu"""
     try:
         # Job oluştur
-        job_id = request.jobId or str(uuid.uuid4())
+        job_id = str(uuid.uuid4())
+        project_id = f"project_{int(time.time())}"
+        project_url = f"https://labs.google/fx/tools/flow/project/{project_id}"
+        
         jobs[job_id] = {
             "id": job_id,
             "prompt": request.prompt,
             "model": request.model,
-            "userId": request.userId,
-            "status": "queued",
-            "progress": 0,
-            "currentStep": "Job kuyruğa alındı",
+            "user_id": request.user_id,
+            "project_id": project_id,
+            "project_url": project_url,
+            "status": "pending",
             "created_at": datetime.now().isoformat(),
-            "timeout": request.timeout,
-            "callbackUrl": request.callbackUrl
+            "callback_url": request.callback_url
         }
         
         # Production callback URL'ini kontrol et
-        callback_url = request.callbackUrl
+        callback_url = request.callback_url
         if not callback_url or callback_url == "None":
             callback_url = "https://balder-ai.vercel.app/api/jobs/callback"
         
-        print(f"🚀 Starting automation for job {job_id}")
+        print(f"🚀 Creating project for job {job_id}")
         print(f"📝 Prompt: {request.prompt}")
-        print(f"👤 User ID: {request.userId}")
+        print(f"👤 User ID: {request.user_id}")
+        print(f"🔗 Project URL: {project_url}")
         print(f"📞 Callback URL: {callback_url}")
         
         # Background task olarak automation'ı başlat
@@ -236,48 +257,40 @@ async def google_flow_endpoint(request: GoogleFlowRequest, background_tasks: Bac
             run_automation, 
             job_id, 
             request.prompt, 
-            request.userId or "default_user",
+            request.user_id,
             callback_url
         )
         
         return JobResponse(
             success=True,
-            message="Job başarıyla başlatıldı - BalderAI Production",
-            data={
-                "jobId": job_id,
-                "status": "queued",
-                "estimatedTime": "5-10 dakika",
-                "callbackUrl": callback_url,
-                "origin": "https://balder-ai.vercel.app"
-            }
+            job_id=job_id,
+            project_url=project_url,
+            project_id=project_id,
+            user_id=request.user_id,
+            status="pending",
+            message="Video generation started. Will be ready in ~3 minutes.",
+            total_videos=1,
+            is_new_project=True
         )
         
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
 
-@app.get("/api/job/{job_id}", response_model=JobStatus)
+@app.get("/api/v1/jobs/{job_id}", response_model=JobStatus)
 async def get_job_status(job_id: str):
-    """Job durumunu sorgula"""
+    """Get job status - Android Agent Ubuntu Migration Guide uyumlu"""
     if job_id not in jobs:
         raise HTTPException(status_code=404, detail="Job bulunamadı")
     
     job = jobs[job_id]
     
-    # Session bilgilerini al
-    session_info = {}
-    try:
-        session_manager = SessionManager()
-        session_info = session_manager.get_session_info()
-    except:
-        session_info = {"status": "session_error"}
-    
     return JobStatus(
-        jobId=job_id,
+        job_id=job_id,
         status=job["status"],
-        progress=job["progress"],
-        currentStep=job["currentStep"],
-        estimatedTimeRemaining="Hesaplanıyor...",
-        sessionInfo=session_info
+        project_url=job.get("project_url"),
+        video_url=job.get("video_url"),
+        created_at=job["created_at"],
+        completed_at=job.get("completed_at")
     )
 
 @app.post("/api/restart", response_model=RestartResponse)
@@ -295,6 +308,82 @@ async def restart_service():
             success=True,
             message="Servis başarıyla yeniden başlatıldı",
             data={"timestamp": datetime.now().isoformat()}
+        )
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+
+@app.get("/api/v1/users/{user_id}/stats", response_model=UserStats)
+async def get_user_stats(user_id: str):
+    """Get user project statistics - Android Agent Ubuntu Migration Guide uyumlu"""
+    try:
+        # User stats hesapla
+        user_jobs = [job for job in jobs.values() if job.get("user_id") == user_id]
+        total_videos = len(user_jobs)
+        last_activity = max([job["created_at"] for job in user_jobs]) if user_jobs else None
+        project_url = user_jobs[-1]["project_url"] if user_jobs else None
+        
+        return UserStats(
+            status="success",
+            user_id=user_id,
+            data={
+                "total_projects": len(set([job.get("project_id") for job in user_jobs])),
+                "total_videos": total_videos,
+                "last_activity": last_activity,
+                "project_url": project_url
+            },
+            timestamp=datetime.now().isoformat()
+        )
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+
+@app.get("/api/v1/users/stats/all", response_model=AllUsersStats)
+async def get_all_users_stats():
+    """Get all users statistics - Android Agent Ubuntu Migration Guide uyumlu"""
+    try:
+        # Tüm user'ları analiz et
+        user_stats = {}
+        total_projects = len(set([job.get("project_id") for job in jobs.values() if job.get("project_id")]))
+        total_videos = len(jobs)
+        
+        for job in jobs.values():
+            user_id = job.get("user_id")
+            if user_id:
+                if user_id not in user_stats:
+                    user_stats[user_id] = {"total_videos": 0, "last_activity": None}
+                user_stats[user_id]["total_videos"] += 1
+                if not user_stats[user_id]["last_activity"] or job["created_at"] > user_stats[user_id]["last_activity"]:
+                    user_stats[user_id]["last_activity"] = job["created_at"]
+        
+        return AllUsersStats(
+            status="success",
+            data={
+                "total_users": len(user_stats),
+                "total_projects": total_projects,
+                "total_videos": total_videos,
+                "users": user_stats
+            },
+            timestamp=datetime.now().isoformat()
+        )
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+
+@app.post("/api/v1/users/projects/cleanup", response_model=CleanupResponse)
+async def cleanup_old_projects(request: CleanupRequest):
+    """Cleanup old projects - Android Agent Ubuntu Migration Guide uyumlu"""
+    try:
+        # Eski job'ları temizle
+        cutoff_time = datetime.now() - timedelta(days=request.days_threshold)
+        old_jobs = [job_id for job_id, job in jobs.items() 
+                   if datetime.fromisoformat(job["created_at"]) < cutoff_time]
+        
+        for job_id in old_jobs:
+            del jobs[job_id]
+        
+        return CleanupResponse(
+            status="success",
+            message=f"Cleaned up {len(old_jobs)} old projects",
+            days_threshold=request.days_threshold,
+            timestamp=datetime.now().isoformat()
         )
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
@@ -329,8 +418,8 @@ def main():
         formatter_class=argparse.RawDescriptionHelpFormatter,
         epilog="""
 Örnekler:
-  python main.py                    # API server'ı başlat (varsayılan port 8000)
-  python main.py --port 8080        # Farklı port'ta başlat
+  python main.py                    # API server'ı başlat (varsayılan port 8080)
+  python main.py --port 8000        # Farklı port'ta başlat
   python main.py --host 0.0.0.0     # Tüm IP'lerden erişime aç
   python main.py --test-session     # Session manager'ı test et
   python main.py --clear-session    # Session'ı temizle
@@ -341,8 +430,8 @@ def main():
     parser.add_argument(
         "--port", 
         type=int, 
-        default=8000,
-        help="API server port'u (varsayılan: 8000)"
+        default=8080,
+        help="API server port'u (varsayılan: 8080)"
     )
     
     parser.add_argument(

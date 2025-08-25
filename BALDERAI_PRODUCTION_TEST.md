@@ -3,16 +3,19 @@
 ## ✅ Tamamlanan Özellikler
 
 ### 1️⃣ Production Callback Sistemi
+
 - **Default Callback URL:** `https://balder-ai.vercel.app/api/jobs/callback`
 - **Automatic URL Conversion:** Localhost URL'leri otomatik olarak production'a çevriliyor
 - **Headers:** `Appium-Agent/1.0` User-Agent ve production Origin
 
 ### 2️⃣ CORS Konfigürasyonu
+
 - **Production Domain:** `https://balder-ai.vercel.app`
 - **Development Domains:** `http://localhost:3000`, `https://localhost:3000`
 - **Universal Access:** Geçici olarak tüm origin'lere izin
 
 ### 3️⃣ API Endpoints
+
 - `POST /api/google-flow` - Video üretimi başlat
 - `GET /api/job/{job_id}` - Job durumu sorgula
 - `POST /api/test-callback` - Callback sistemi test et
@@ -22,6 +25,7 @@
 ## 🧪 Test Senaryoları
 
 ### 1. API Server Başlatma
+
 ```bash
 # Varsayılan port'ta başlat
 python main.py
@@ -34,38 +38,64 @@ python main.py --host 0.0.0.0
 ```
 
 ### 2. Production Video Üretimi Test
+
 ```bash
-curl -X POST http://localhost:8000/api/google-flow \
+curl -X POST http://localhost:8080/api/v1/create-project \
   -H "Content-Type: application/json" \
   -H "Origin: https://balder-ai.vercel.app" \
   -d '{
-    "jobId": "test_production_job_001",
-    "prompt": "A cute cat playing with a ball in the garden",
+    "prompt": "A beautiful sunset over mountains",
     "model": "veo-3",
-    "action": "create_project",
-    "userId": "test_user_123"
+    "user_id": "user_123",
+    "callback_url": "https://balder-ai.vercel.app/api/jobs/callback"
   }'
 ```
 
 ### 3. Callback Sistemi Test
+
 ```bash
-curl -X POST http://localhost:8000/api/test-callback \
+curl -X POST http://localhost:8080/api/test-callback \
   -H "Content-Type: application/json"
 ```
 
 ### 4. Job Durumu Sorgulama
+
 ```bash
-curl -X GET http://localhost:8000/api/job/test_production_job_001
+curl -X GET http://localhost:8080/api/v1/jobs/{job_id}
 ```
 
 ### 5. Health Check
+
 ```bash
-curl -X GET http://localhost:8000/health
+curl -X GET http://localhost:8080/health
+```
+
+### 6. User Statistics
+
+```bash
+curl -X GET http://localhost:8080/api/v1/users/user_123/stats
+```
+
+### 7. All Users Statistics
+
+```bash
+curl -X GET http://localhost:8080/api/v1/users/stats/all
+```
+
+### 8. Cleanup Old Projects
+
+```bash
+curl -X POST http://localhost:8080/api/v1/users/projects/cleanup \
+  -H "Content-Type: application/json" \
+  -d '{
+    "days_threshold": 30
+  }'
 ```
 
 ## 📊 Beklenen Loglar
 
 ### Başarılı Video Üretimi
+
 ```
 🚀 Starting automation for job test_production_job_001
 📝 Prompt: A cute cat playing with a ball in the garden
@@ -77,6 +107,7 @@ curl -X GET http://localhost:8000/health
 ```
 
 ### Callback Test
+
 ```
 📤 Sending callback to https://balder-ai.vercel.app/api/jobs/callback
 📦 Payload: {'jobId': 'test_1234567890', 'status': 'test', ...}
@@ -86,6 +117,7 @@ curl -X GET http://localhost:8000/health
 ## 🔧 Konfigürasyon
 
 ### Environment Variables
+
 ```bash
 # Headless mode için
 export CHROME_HEADLESS=true
@@ -95,29 +127,32 @@ export DEFAULT_CALLBACK_URL=https://balder-ai.vercel.app/api/jobs/callback
 ```
 
 ### API Response Format
+
 ```json
 {
   "success": true,
-  "message": "Job başarıyla başlatıldı - BalderAI Production",
-  "data": {
-    "jobId": "test_production_job_001",
-    "status": "queued",
-    "estimatedTime": "5-10 dakika",
-    "callbackUrl": "https://balder-ai.vercel.app/api/jobs/callback",
-    "origin": "https://balder-ai.vercel.app"
-  }
+  "job_id": "job_abc123",
+  "project_url": "https://labs.google/fx/tools/flow/project/xyz789",
+  "project_id": "xyz789",
+  "user_id": "user_123",
+  "status": "pending",
+  "message": "Video generation started. Will be ready in ~3 minutes.",
+  "total_videos": 1,
+  "is_new_project": true
 }
 ```
 
 ## 🚨 Hata Durumları
 
 ### Callback Hatası
+
 ```
 ❌ Callback failed: 500 - Internal Server Error
 ❌ Callback error: Connection timeout
 ```
 
 ### Automation Hatası
+
 ```
 Job test_production_job_001 hatası: Chrome driver not found
 📤 Sending callback to https://balder-ai.vercel.app/api/jobs/callback
