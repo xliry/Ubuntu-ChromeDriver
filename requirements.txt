@@ -1,0 +1,20 @@
+# Ubuntu ChromeDriver Automation Project Dependencies
+# Core web automation libraries
+selenium>=4.15.0
+undetected-chromedriver>=3.5.0
+
+# Web framework for API server
+fastapi>=0.104.0
+uvicorn[standard]>=0.24.0
+
+# Data validation and serialization
+pydantic>=2.5.0
+
+# HTTP client for testing
+requests>=2.31.0
+
+# Cryptography for session encryption
+cryptography>=41.0.0
+
+# Additional utilities
+python-multipart>=0.0.6
