@@ -46,12 +46,16 @@ app.add_middleware(
 jobs = {}
 active_sessions = {}
 
-# Pydantic models - Android Agent Ubuntu Migration Guide uyumlu
-class CreateProjectRequest(BaseModel):
+# Pydantic models - BalderAI Production uyumlu
+class GoogleFlowRequest(BaseModel):
+    jobId: str
     prompt: str
     model: str = "veo-3"
-    user_id: str
-    callback_url: Optional[str] = "https://balder-ai.vercel.app/api/jobs/callback"
+    timestamp: Optional[str] = None
+    userId: Optional[str] = None
+    action: str = "create_project"
+    timeout: int = 300
+    callbackUrl: Optional[str] = "https://balder-ai.vercel.app/api/jobs/callback"
 
 class JobResponse(BaseModel):
     success: bool
@@ -155,7 +159,7 @@ async def run_automation(job_id: str, prompt: str, user_id: str, callback_url: s
             automation.close_browser()
 
 async def send_production_callback(job_id: str, status: str, callback_url: str, error: str = None, result_url: str = None):
-    """Production BalderAI callback sistemi"""
+    """Production BalderAI callback sistemi - BalderAI Production güncellemeleri"""
     try:
         import requests
         
@@ -220,12 +224,20 @@ async def health_check():
         version="1.0.0"
     )
 
-@app.post("/api/v1/create-project", response_model=JobResponse)
-async def create_project_endpoint(request: CreateProjectRequest, background_tasks: BackgroundTasks):
-    """Create video project endpoint - Android Agent Ubuntu Migration Guide uyumlu"""
+@app.post("/api/v1/automation/google-flow")
+async def google_flow_automation_endpoint(request: GoogleFlowRequest, background_tasks: BackgroundTasks):
+    """Google Flow automation endpoint - BalderAI Production uyumlu"""
     try:
-        # Job oluştur
-        job_id = str(uuid.uuid4())
+        # Validate action
+        valid_actions = ["create_project", "download_videos", "full_test"]
+        if request.action not in valid_actions:
+            raise HTTPException(
+                status_code=400, 
+                detail=f"Invalid action. Must be one of: {', '.join(valid_actions)}"
+            )
+
+        # Job oluştur - BalderAI Production uyumlu
+        job_id = request.jobId
         project_id = f"project_{int(time.time())}"
         project_url = f"https://labs.google/fx/tools/flow/project/{project_id}"
         
@@ -233,22 +245,25 @@ async def create_project_endpoint(request: CreateProjectRequest, background_task
             "id": job_id,
             "prompt": request.prompt,
             "model": request.model,
-            "user_id": request.user_id,
+            "user_id": request.userId,
             "project_id": project_id,
             "project_url": project_url,
             "status": "pending",
             "created_at": datetime.now().isoformat(),
-            "callback_url": request.callback_url
+            "callback_url": request.callbackUrl,
+            "action": request.action,
+            "timeout": request.timeout
         }
         
         # Production callback URL'ini kontrol et
-        callback_url = request.callback_url
+        callback_url = request.callbackUrl
         if not callback_url or callback_url == "None":
             callback_url = "https://balder-ai.vercel.app/api/jobs/callback"
         
-        print(f"🚀 Creating project for job {job_id}")
+        print(f"🚀 Google Flow automation started for job {job_id}")
         print(f"📝 Prompt: {request.prompt}")
-        print(f"👤 User ID: {request.user_id}")
+        print(f"👤 User ID: {request.userId}")
+        print(f"🎯 Action: {request.action}")
         print(f"🔗 Project URL: {project_url}")
         print(f"📞 Callback URL: {callback_url}")
         
@@ -257,28 +272,29 @@ async def create_project_endpoint(request: CreateProjectRequest, background_task
             run_automation, 
             job_id, 
             request.prompt, 
-            request.user_id,
+            request.userId or "default_user",
             callback_url
         )
         
-        return JobResponse(
-            success=True,
-            job_id=job_id,
-            project_url=project_url,
-            project_id=project_id,
-            user_id=request.user_id,
-            status="pending",
-            message="Video generation started. Will be ready in ~3 minutes.",
-            total_videos=1,
-            is_new_project=True
-        )
+        # Return integration guide format
+        return {
+            "success": True,
+            "jobId": request.jobId,
+            "message": "Job received and processing started",
+            "estimatedTime": "3-5 minutes",
+            "internalJobId": job_id,
+            "status": "pending"
+        }
         
+    except HTTPException:
+        raise
     except Exception as e:
+        print(f"Failed to create Google Flow job: {e}")
         raise HTTPException(status_code=500, detail=str(e))
 
 @app.get("/api/v1/jobs/{job_id}", response_model=JobStatus)
 async def get_job_status(job_id: str):
-    """Get job status - Android Agent Ubuntu Migration Guide uyumlu"""
+    """Get job status - BalderAI Production uyumlu"""
     if job_id not in jobs:
         raise HTTPException(status_code=404, detail="Job bulunamadı")
     
@@ -292,6 +308,51 @@ async def get_job_status(job_id: str):
         created_at=job["created_at"],
         completed_at=job.get("completed_at")
     )
+
+@app.get("/api/v1/automation/google-flow/status")
+async def get_google_flow_status():
+    """Get Google Flow project status - BalderAI Production uyumlu"""
+    try:
+        # Get latest job status
+        if jobs:
+            latest_job = max(jobs.values(), key=lambda x: x["created_at"])
+            return {
+                "status": "success",
+                "data": {
+                    "current_job": latest_job["id"],
+                    "status": latest_job["status"],
+                    "project_url": latest_job.get("project_url"),
+                    "created_at": latest_job["created_at"]
+                },
+                "timestamp": datetime.now().isoformat()
+            }
+        else:
+            return {
+                "status": "success",
+                "data": {"message": "No active jobs"},
+                "timestamp": datetime.now().isoformat()
+            }
+        
+    except Exception as e:
+        print(f"Failed to get Google Flow status: {e}")
+        raise HTTPException(status_code=500, detail=str(e))
+
+@app.get("/api/v1/automation/google-flow/session")
+async def get_session_status():
+    """Get current Google session status - BalderAI Production uyumlu"""
+    try:
+        session_mgr = SessionManager()
+        session_info = session_mgr.get_session_info()
+        
+        return {
+            "status": "success",
+            "data": session_info,
+            "timestamp": datetime.now().isoformat()
+        }
+        
+    except Exception as e:
+        print(f"Failed to get session status: {e}")
+        raise HTTPException(status_code=500, detail=str(e))
 
 @app.post("/api/restart", response_model=RestartResponse)
 async def restart_service():
@@ -409,6 +470,75 @@ async def test_callback():
             "callbackUrl": callback_url
         }
     except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+
+@app.get("/api/v1/media/downloaded_videos/{filename}")
+async def serve_output_file(filename: str):
+    """Serve output files (videos, images) to website via ngrok - BalderAI Production uyumlu"""
+    try:
+        import os
+        file_path = os.path.join("media", "downloaded_videos", filename)
+        
+        # Check if file exists
+        if not os.path.exists(file_path):
+            raise HTTPException(status_code=404, detail=f"File not found: {filename}")
+        
+        # Get file info
+        file_size = os.path.getsize(file_path)
+        
+        # Determine media type based on extension
+        file_ext = filename.lower().split('.')[-1]
+        media_type_map = {
+            'mp4': 'video/mp4',
+            'avi': 'video/x-msvideo',
+            'mov': 'video/quicktime',
+            'mkv': 'video/x-matroska',
+            'jpg': 'image/jpeg',
+            'jpeg': 'image/jpeg',
+            'png': 'image/png',
+            'gif': 'image/gif'
+        }
+        
+        media_type = media_type_map.get(file_ext, 'application/octet-stream')
+        
+        print(f"Serving file: {filename} ({file_size} bytes, {media_type})")
+        
+        from fastapi.responses import FileResponse
+        return FileResponse(
+            path=file_path,
+            media_type=media_type,
+            filename=filename
+        )
+        
+    except HTTPException:
+        raise
+    except Exception as e:
+        print(f"Failed to serve file {filename}: {e}")
+        raise HTTPException(status_code=500, detail=str(e))
+
+@app.get("/api/v1/download/{filename}")
+async def download_file(filename: str):
+    """Download endpoint for processed files - BalderAI Production uyumlu"""
+    try:
+        import os
+        file_path = os.path.join("media", "output", filename)
+        
+        # Check if file exists
+        if not os.path.exists(file_path):
+            raise HTTPException(status_code=404, detail=f"File not found: {filename}")
+        
+        # Force download by setting appropriate headers
+        from fastapi.responses import FileResponse
+        return FileResponse(
+            path=file_path,
+            filename=filename,
+            headers={"Content-Disposition": f"attachment; filename={filename}"}
+        )
+        
+    except HTTPException:
+        raise
+    except Exception as e:
+        print(f"Failed to download file {filename}: {e}")
         raise HTTPException(status_code=500, detail=str(e))
 
 def main():

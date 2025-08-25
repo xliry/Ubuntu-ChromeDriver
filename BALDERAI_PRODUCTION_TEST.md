@@ -40,14 +40,16 @@ python main.py --host 0.0.0.0
 ### 2. Production Video Üretimi Test
 
 ```bash
-curl -X POST http://localhost:8080/api/v1/create-project \
+curl -X POST http://localhost:8080/api/v1/automation/google-flow \
   -H "Content-Type: application/json" \
   -H "Origin: https://balder-ai.vercel.app" \
   -d '{
+    "jobId": "test_production_job_001",
     "prompt": "A beautiful sunset over mountains",
     "model": "veo-3",
-    "user_id": "user_123",
-    "callback_url": "https://balder-ai.vercel.app/api/jobs/callback"
+    "action": "create_project",
+    "userId": "user_123",
+    "callbackUrl": "https://balder-ai.vercel.app/api/jobs/callback"
   }'
 ```
 
@@ -64,25 +66,43 @@ curl -X POST http://localhost:8080/api/test-callback \
 curl -X GET http://localhost:8080/api/v1/jobs/{job_id}
 ```
 
-### 5. Health Check
+### 5. Google Flow Status
+
+```bash
+curl -X GET http://localhost:8080/api/v1/automation/google-flow/status
+```
+
+### 6. Session Status
+
+```bash
+curl -X GET http://localhost:8080/api/v1/automation/google-flow/session
+```
+
+### 7. Health Check
 
 ```bash
 curl -X GET http://localhost:8080/health
 ```
 
-### 6. User Statistics
+### 8. Media File Serving
+
+```bash
+curl -X GET http://localhost:8080/api/v1/media/downloaded_videos/result_video.mp4
+```
+
+### 9. User Statistics
 
 ```bash
 curl -X GET http://localhost:8080/api/v1/users/user_123/stats
 ```
 
-### 7. All Users Statistics
+### 10. All Users Statistics
 
 ```bash
 curl -X GET http://localhost:8080/api/v1/users/stats/all
 ```
 
-### 8. Cleanup Old Projects
+### 11. Cleanup Old Projects
 
 ```bash
 curl -X POST http://localhost:8080/api/v1/users/projects/cleanup \
@@ -131,14 +151,11 @@ export DEFAULT_CALLBACK_URL=https://balder-ai.vercel.app/api/jobs/callback
 ```json
 {
   "success": true,
-  "job_id": "job_abc123",
-  "project_url": "https://labs.google/fx/tools/flow/project/xyz789",
-  "project_id": "xyz789",
-  "user_id": "user_123",
-  "status": "pending",
-  "message": "Video generation started. Will be ready in ~3 minutes.",
-  "total_videos": 1,
-  "is_new_project": true
+  "jobId": "test_production_job_001",
+  "message": "Job received and processing started",
+  "estimatedTime": "3-5 minutes",
+  "internalJobId": "job_abc123",
+  "status": "pending"
 }
 ```
 
